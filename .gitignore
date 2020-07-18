@@ -1,0 +1,11 @@
+.idea/
+cmake-build-debug/
+*.swp
+*.swo
+
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+icmp-redir
+
