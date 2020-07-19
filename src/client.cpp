@@ -13,6 +13,6 @@ Client::Client(Config & config) : config(config)
 
 void Client::run()
 {
-    auto h = icmp();
+    Icmp().poll();
 }
 

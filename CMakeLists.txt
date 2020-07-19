@@ -32,6 +32,7 @@ add_executable(
         ${PROJECT_NAME}
         src/assertf.h
         src/formatter.h
+        src/net.h
         src/main.cpp
         src/config.cpp
         src/config.h
