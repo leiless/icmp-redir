@@ -17,11 +17,11 @@ public:
     class ClientConfig {
     public:
         std::string addr;
-    } client_config;
+    } client;
     class ServerConfig {
     public:
         /* Currently there is no server specific options */
-    } server_config;
+    } server;
 
     Config(int, char **);
 private:

@@ -3,6 +3,8 @@
  */
 
 #include "config.h"
+#define ASSERTF_DEF_ONCE
+#include "assertf.h"
 
 #include <iostream>
 #include <sstream>
@@ -49,7 +51,7 @@ Config::Config(int argc, char **argv)
             break;
         }
         case 'v':
-            std::cout << "HEAD commit: " << HEAD_COMMIT << std::endl;
+            std::cout << "HEAD commit: " << BUILD_HEAD_COMMIT << std::endl;
             exit(EXIT_SUCCESS);
         case 'h':
             usage(EXIT_SUCCESS);
@@ -64,12 +66,13 @@ Config::Config(int argc, char **argv)
         usage(EXIT_FAILURE);
     }
 
+    assert_nonnull(mode);
     if (CSTR_EQ(mode, "client")) {
         run_type = CLIENT;
         if (addr.empty()) {
             throw std::runtime_error("missing address in client mode");
         }
-        client_config.addr = addr;
+        client.addr = addr;
     } else if (CSTR_EQ(mode, "server")) {
         run_type = SERVER;
     } else {
