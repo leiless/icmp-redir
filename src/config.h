@@ -20,13 +20,14 @@ public:
     } client_config;
     class ServerConfig {
     public:
-        /* Currently no server specific options */
+        /* Currently there is no server specific options */
     } server_config;
 
-    Config(int, char *[]);
+    Config(int, char **);
 private:
     int argc;
     const char **argv;
+
     void usage(int) __attribute__ ((noreturn));
 };
 

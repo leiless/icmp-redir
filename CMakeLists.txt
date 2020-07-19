@@ -18,4 +18,6 @@ add_executable(
         src/main.cpp
         src/config.cpp
         src/config.h
+        src/client.cpp
+        src/client.h
 )
