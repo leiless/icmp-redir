@@ -40,4 +40,6 @@ add_executable(
         src/client.h
         src/icmp.cpp
         src/icmp.h
+        src/utils.h
 )
+

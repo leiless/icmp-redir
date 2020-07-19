@@ -7,6 +7,7 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "assertf.h"
 #include "formatter.h"
@@ -27,6 +28,17 @@ namespace net {
     void set_ip_hdr_inc(int fd, bool on = true) {
         int e = setsockopt(fd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on));
         assert_zero(e, %d);
+    }
+
+    /**
+     * @param ip    Network byte order of IP address
+     */
+    std::string ip_to_str(uint32_t ip) {
+        static constexpr uint32_t kIpStrBufSize = 16;
+        struct in_addr addr = { .s_addr = ip };
+        char output[kIpStrBufSize];
+        (void) strncpy(output, inet_ntoa(addr), sizeof(output));
+        return output;
     }
 }
 

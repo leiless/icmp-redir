@@ -5,8 +5,10 @@
 #include "icmp.h"
 #include "formatter.h"
 #include "net.h"
+#include "utils.h"
 
 #include <stdexcept>
+#include <sstream>
 
 #include <cerrno>
 #include <cstring>
@@ -19,19 +21,19 @@
 /**
  * Initialize an ICMP packet(IP header included in buffer)
  */
-std::optional<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size)
+std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size)
 {
     assert_nonnull(buffer);
     assert_nonzero(size, %zu);
 
     if (size < sizeof(struct iphdr)) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto iph = (struct iphdr *) buffer;
     auto iph_len = IPHDR_LEN(iph);
     if (iph_len < sizeof(struct iphdr)) {
-        return std::nullopt;
+        return nullptr;
     }
 
     if (iph->protocol != IPPROTO_ICMP) {
@@ -41,24 +43,24 @@ std::optional<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size)
             // XXX: Should never happen
             panicf("unknown IP protocol: %#x", iph->protocol);
         }
-        return std::nullopt;
+        return nullptr;
     }
 
     if (!verify_iphdr_checksum(iph)) {
-        return std::nullopt;
+        return nullptr;
     }
 
     if (iph_len + sizeof(struct icmphdr) > size) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto icmph = (struct icmphdr *) (buffer + iph_len);
     auto icmp_len = size - iph_len;
     if (!verify_icmphdr_checksum(icmph, icmp_len)) {
-        return std::nullopt;
+        return nullptr;
     }
 
-    return IcmpPacket(buffer, size);
+    return std::unique_ptr<IcmpPacket>(new IcmpPacket(buffer, size));
 }
 
 IcmpPacket::IcmpPacket(const char *buffer0, size_t size0)
@@ -128,8 +130,33 @@ bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n)
     return icmph->checksum == calc_icmphdr_checksum(icmph, n);
 }
 
-Icmp::Icmp()
-{
+void IcmpPacket::hexdump() const {
+    std::ostringstream oss;
+    auto iph_len = IPHDR_LEN(iph);
+    oss << "IP protocol: " << (int) iph->protocol << " "
+        << "version: " << iph->version << " "
+        << "id: " << iph->id << " "
+        << "length: " << iph_len << " "
+        << "tos: " << int(iph->tos) << " "
+        << "tot_len: " << iph->tot_len << " "
+        << "frag_off: " << iph->frag_off << " "
+        << "ttl: " << int(iph->ttl) << " "
+        << "check: " << iph->check
+        << std::endl;
+    oss << net::ip_to_str(iph->saddr) << " -> " << net::ip_to_str(iph->daddr) << std::endl;
+    oss << "ICMP length: " << icmp_len << " "
+        << "header: " << sizeof(*icmph) << " "
+        << "data: " << icmp_len - sizeof(*icmph) << " "
+        << "type: " << icmph->type << " "
+        << "code: " << icmph->code << " "
+        << "checksum: " << icmph->checksum
+        << std::endl;
+    oss << "Raw packet hexdump:" << std::endl;
+    utils::hexdump(buffer, size, oss);
+    std::cout << oss.str();
+}
+
+Icmp::Icmp() {
     fd = socket(PF_INET, SOCK_RAW,  IPPROTO_ICMP);
     if (fd < 0) {
         if (errno == EPERM) {
@@ -142,8 +169,7 @@ Icmp::Icmp()
     net::set_ip_hdr_inc(fd);
 }
 
-void Icmp::poll()
-{
+void Icmp::poll() {
     struct pollfd fds = {fd, POLLIN, 0};
     int e;
     char buffer[kMaxIcmpPacketSize];
@@ -151,23 +177,29 @@ void Icmp::poll()
     while (true) {
         e = ::poll(&fds, 1, -1);
         if (e < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
+            if (errno == EINTR) continue;
             panicf("poll(2) fail: %s", strerror(errno));
         }
         assert_eq(e, 1, %d);
         assert_eq(fds.revents, POLLIN, %#x);
 
-        while (true) {
-            nread = read(fd, buffer, sizeof(buffer));
-            if (nread < 0) {
-                if (errno == EINTR) continue;
-                panicf("read(2) fail: %s", strerror(errno));
-            }
-            assert_nonzero(nread, %zd);
+out_read:
+        nread = read(fd, buffer, sizeof(buffer));
+        if (nread < 0) {
+            if (errno == EINTR) goto out_read;
+            panicf("read(2) fail: %s", strerror(errno));
+        }
+        assert_nonzero(nread, %zd);
 
-            // TODO: Schedule into thread pool
+        // TODO: Schedule into thread pool
+        auto packet = IcmpPacket::parse(buffer, (size_t) nread);
+        if (packet) {
+            packet->hexdump();
+        } else {
+            std::ostringstream oss;
+            oss << "Unrecognizable ICMP packet, raw packet hexdump:" << std::endl;
+            utils::hexdump(buffer, nread, oss);
+            std::cout << oss.str();
         }
     }
 }

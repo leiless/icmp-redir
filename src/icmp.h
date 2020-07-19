@@ -5,17 +5,20 @@
 #ifndef ICMP_REDIR_ICMP_H
 #define ICMP_REDIR_ICMP_H
 
-#include <optional>
 #include <unistd.h>
 
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
+#include <iostream>
+#include <memory>
+
 class IcmpPacket {
 public:
-    static std::optional<IcmpPacket> parse(const char *, size_t);
+    static std::unique_ptr<IcmpPacket> parse(const char *, size_t);
     ~IcmpPacket() { delete buffer; }
 
+    void hexdump() const;
 private:
     IcmpPacket(const char *, size_t);
 
