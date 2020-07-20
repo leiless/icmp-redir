@@ -41,7 +41,7 @@ public:
     Icmp();
     ~Icmp() { (void) close(fd); }
 
-    void poll();
+    void poll(void (*)(std::unique_ptr<IcmpPacket>));
 private:
     static constexpr auto kMaxIcmpPacketSize = 65536u;
     int fd;

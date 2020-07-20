@@ -13,6 +13,8 @@ Client::Client(Config & config) : config(config)
 
 void Client::run()
 {
-    Icmp().poll();
+    Icmp().poll([] (std::unique_ptr<IcmpPacket> packet) {
+        packet->hexdump();
+    });
 }
 

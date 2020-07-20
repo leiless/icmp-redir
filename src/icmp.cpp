@@ -177,7 +177,9 @@ Icmp::Icmp() {
     net::set_ip_hdr_inc(fd);
 }
 
-void Icmp::poll() {
+void Icmp::poll(void (*callback)(std::unique_ptr<IcmpPacket>)) {
+    assert_nonnull(callback);
+
     struct pollfd fds = {fd, POLLIN, 0};
     int e;
     char buffer[kMaxIcmpPacketSize];
@@ -202,10 +204,14 @@ out_read:
         // TODO: Schedule into thread pool
         auto packet = IcmpPacket::parse(buffer, (size_t) nread);
         if (packet) {
-            packet->hexdump();
+            //packet->hexdump();
+            // Append magic data
+            // Rewrite src/dst addrs(bookkeeping original addrs in a hashmap)
+            // Send out ICMP packet to dst addr
+            callback(std::move(packet));
         } else {
             std::ostringstream oss;
-            oss << "Unrecognizable ICMP packet, raw packet hexdump:" << std::endl;
+            oss << "hexdump of unrecognizable ICMP packet(" << nread <<  " bytes):" << std::endl;
             utils::hexdump(buffer, nread, oss);
             std::cout << oss.str();
         }
