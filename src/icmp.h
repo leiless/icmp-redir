@@ -29,6 +29,7 @@ private:
 
     char *buffer;
     size_t size;
+    // Always points to buffer
     struct iphdr *iph;
     struct icmphdr *icmph;
     // Total ICMP packet length(header + data)

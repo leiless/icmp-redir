@@ -133,23 +133,31 @@ bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n)
 void IcmpPacket::hexdump() const {
     std::ostringstream oss;
     auto iph_len = IPHDR_LEN(iph);
-    oss << "IP protocol: " << (int) iph->protocol << " "
-        << "version: " << iph->version << " "
-        << "id: " << iph->id << " "
+    oss << "IP proto: " << (int) iph->protocol << " "
+        << "ver: " << iph->version << " "
+        << "id: 0x" << std::setfill('0') << std::setw(4) << std::hex << ntohs(iph->id) << std::dec << " "
         << "length: " << iph_len << " "
         << "tos: " << int(iph->tos) << " "
-        << "tot_len: " << iph->tot_len << " "
+        << "tot_len: " << ntohs(iph->tot_len) << " "
         << "frag_off: " << iph->frag_off << " "
         << "ttl: " << int(iph->ttl) << " "
-        << "check: " << iph->check
+        << "check: 0x" << std::setfill('0') << std::setw(4) << std::hex << iph->check << std::dec
         << std::endl;
     oss << net::ip_to_str(iph->saddr) << " -> " << net::ip_to_str(iph->daddr) << std::endl;
     oss << "ICMP length: " << icmp_len << " "
         << "header: " << sizeof(*icmph) << " "
         << "data: " << icmp_len - sizeof(*icmph) << " "
-        << "type: " << icmph->type << " "
-        << "code: " << icmph->code << " "
-        << "checksum: " << icmph->checksum
+        << "type: " << (uint16_t) icmph->type << " "
+        << "code: " << (uint16_t) icmph->code << " ";
+    if (icmph->type == ICMP_ECHO || icmph->type == ICMP_ECHOREPLY) {
+        oss << "id: " << ntohs(icmph->un.echo.id) << " "
+            << "seq: " << ntohs(icmph->un.echo.sequence) << " ";
+    } else {
+        oss << "rest of header: 0x" << std::setfill('0') << std::setw(8) << std::hex
+            << ntohl(icmph->un.gateway) << std::dec << " ";
+    }
+    oss << "checksum: 0x" << std::setfill('0') << std::setw(4) << std::hex
+        << icmph->checksum << std::dec
         << std::endl;
     oss << "Raw packet hexdump:" << std::endl;
     utils::hexdump(buffer, size, oss);

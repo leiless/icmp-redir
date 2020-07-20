@@ -34,7 +34,7 @@ namespace net {
      * @param ip    Network byte order of IP address
      */
     std::string ip_to_str(uint32_t ip) {
-        static constexpr uint32_t kIpStrBufSize = 16;
+        static constexpr auto kIpStrBufSize = 16u;
         struct in_addr addr = { .s_addr = ip };
         char output[kIpStrBufSize];
         (void) strncpy(output, inet_ntoa(addr), sizeof(output));
