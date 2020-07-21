@@ -13,6 +13,41 @@
 #include <iostream>
 #include <memory>
 
+using IcmpKey = struct IcmpKey {
+    // Destination IPv4 address
+    uint32_t daddr;
+    // ICMP header fields
+    uint16_t id;
+    uint16_t seq;
+    bool operator==(const IcmpKey & rhs) const {
+        return daddr == rhs.daddr && id == rhs.id && seq == rhs.seq;
+    }
+};
+
+// see:
+//  https://stackoverflow.com/questions/17016175/c-unordered-map-using-a-custom-class-type-as-the-key
+//  https://www.geeksforgeeks.org/how-to-create-an-unordered_map-of-user-defined-class-in-cpp/
+namespace std {
+    template<>
+    struct hash<IcmpKey> {
+        size_t operator()(const IcmpKey & k) const {
+            // see: https://stackoverflow.com/a/1646913/13600780
+            size_t res = 17;
+            res = res * 31 + k.daddr;
+            res = res * 31 + k.id;
+            res = res * 31 + k.seq;
+            return res;
+        }
+    };
+}
+
+using IcmpValue = struct IcmpValue {
+    // Item creation time in milliseconds
+    uint64_t ctime;
+    // Source IPv4 address
+    uint32_t saddr;
+};
+
 class IcmpPacket {
 public:
     static std::unique_ptr<IcmpPacket> parse(const char *, size_t);
