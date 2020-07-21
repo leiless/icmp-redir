@@ -1,6 +1,7 @@
 #ifndef ICMP_REDIR_UTILS_H
 #define ICMP_REDIR_UTILS_H
 
+#include <sys/time.h>
 #include <cstdint>
 #include <cstddef>
 #include <cctype>
@@ -32,6 +33,14 @@ namespace utils {
         if (i != 0) {
             os << std::setfill('0') << std::setw(8) << std::hex << i << std::endl;
         }
+    }
+
+    // see: https://stackoverflow.com/a/19555210/13600780
+    uint64_t epoch_ms() {
+        struct timeval tv{};
+        int e = gettimeofday(&tv, nullptr);
+        assert_zero(e, %d);
+        return tv.tv_sec * 1000u + tv.tv_usec / 1000u;
     }
 }
 

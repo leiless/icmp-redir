@@ -16,7 +16,6 @@ public:
     void run();
 private:
     const Config & config;
-    std::unordered_map<IcmpKey , IcmpValue> map;
 };
 
 #endif

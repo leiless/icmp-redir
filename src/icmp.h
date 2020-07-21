@@ -11,7 +11,13 @@
 #include <netinet/ip_icmp.h>
 
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <memory>
+#include <unordered_map>
+
+#include "config.h"
+#include "net.h"
 
 using IcmpKey = struct IcmpKey {
     // Destination IPv4 address
@@ -21,6 +27,16 @@ using IcmpKey = struct IcmpKey {
     uint16_t seq;
     bool operator==(const IcmpKey & rhs) const {
         return daddr == rhs.daddr && id == rhs.id && seq == rhs.seq;
+    }
+
+    [[nodiscard]] std::string str() const {
+        std::ostringstream oss;
+        oss << "IcmpKey {"
+            << "daddr=" << net::ip_to_str(daddr) << " "
+            << "id=" << ntohs(id) << " "
+            << "seq=" << ntohs(seq) << " "
+            << "}";
+        return oss.str();
     }
 };
 
@@ -46,6 +62,15 @@ using IcmpValue = struct IcmpValue {
     uint64_t ctime;
     // Source IPv4 address
     uint32_t saddr;
+
+    [[nodiscard]] std::string str() const {
+        std::ostringstream oss;
+        oss << "IcmpValue {"
+            << "ctime=" << ctime << " "
+            << "saddr=" << net::ip_to_str(saddr) << " "
+            << "}";
+        return oss.str();
+    }
 };
 
 class IcmpPacket {
@@ -54,7 +79,11 @@ public:
     ~IcmpPacket() { delete buffer; }
 
     void hexdump() const;
+    void rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
 private:
+    void client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    void server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+
     IcmpPacket(const char *, size_t);
 
     static uint16_t calc_iphdr_checksum(const struct iphdr *);
@@ -76,10 +105,11 @@ public:
     Icmp();
     ~Icmp() { (void) close(fd); }
 
-    void poll(void (*)(std::unique_ptr<IcmpPacket>));
+    void poll(void (*)(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &));
 private:
     static constexpr auto kMaxIcmpPacketSize = 65536u;
     int fd;
+    std::unordered_map<IcmpKey , IcmpValue> map;
 };
 
 #endif

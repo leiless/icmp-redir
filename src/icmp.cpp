@@ -164,6 +164,37 @@ void IcmpPacket::hexdump() const {
     std::cout << oss.str();
 }
 
+void IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+    switch (config.run_type) {
+    case Config::CLIENT:
+        client_rewrite(config, map);
+        break;
+    case Config::SERVER:
+        server_rewrite(config, map);
+        break;
+    default:
+        panicf("unknown run type: %d", config.run_type);
+    }
+}
+
+void IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+    assert_eq(Config::CLIENT, config.run_type, %d);
+
+    if (icmph->type != ICMP_ECHO || icmph->code != 0) return;
+
+    IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
+    if (map.contains(k)) {
+        std::cout << k.str() << " " << map[k].str() << " already in map, will be overwritten.";
+    }
+    IcmpValue v = {utils::epoch_ms(), iph->saddr};
+    map[k] = v;
+}
+
+void IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+    assert_eq(Config::SERVER, config.run_type, %d);
+
+}
+
 Icmp::Icmp() {
     fd = socket(PF_INET, SOCK_RAW,  IPPROTO_ICMP);
     if (fd < 0) {
@@ -177,7 +208,7 @@ Icmp::Icmp() {
     net::set_ip_hdr_inc(fd);
 }
 
-void Icmp::poll(void (*callback)(std::unique_ptr<IcmpPacket>)) {
+void Icmp::poll(void (*callback)(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &)) {
     assert_nonnull(callback);
 
     struct pollfd fds = {fd, POLLIN, 0};
@@ -208,7 +239,7 @@ out_read:
             // Append magic data
             // Rewrite src/dst addrs(bookkeeping original addrs in a hashmap)
             // Send out ICMP packet to dst addr
-            callback(std::move(packet));
+            callback(std::move(packet), map);
         } else {
             std::ostringstream oss;
             oss << "hexdump of unrecognizable ICMP packet(" << nread <<  " bytes):" << std::endl;
