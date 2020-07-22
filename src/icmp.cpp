@@ -177,22 +177,61 @@ void IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, Icmp
     }
 }
 
+#define MAGIC_DATA          "opqrstuvwxyz{|}~"
+#define MAGIC_DATA_LEN      (sizeof(MAGIC_DATA) - 1)
+
 void IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::CLIENT, config.run_type, %d);
+
+    // TODO: handle for ICMP_ECHOREPLY and send back to original sender
 
     if (icmph->type != ICMP_ECHO || icmph->code != 0) return;
 
     IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
-    if (map.contains(k)) {
-        std::cout << k.str() << " " << map[k].str() << " already in map, will be overwritten.";
-    }
     IcmpValue v = {utils::epoch_ms(), iph->saddr};
+    if (map.contains(k)) {
+        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str();
+    }
     map[k] = v;
+
+    uint32_t server_addr = 0x01020304;
+
+    char data[sizeof(uint32_t) + MAGIC_DATA_LEN];
+    *((uint32_t *) data) = iph->daddr;
+    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_DATA_LEN);
+
+    content_append(data, sizeof(data));
+
+    iph->saddr = 0;
+    iph->daddr = server_addr;
+
+    calc_iphdr_checksum(iph);
+    calc_icmphdr_checksum(icmph, icmp_len);
+
+    // TODO: send (buffer, size) to raw socket fd in Icmp class
 }
 
 void IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::SERVER, config.run_type, %d);
 
+}
+
+// Append data to ICMP content
+// XXX: ICMP checksum will be invalid
+void IcmpPacket::content_append(const char *data, size_t len) {
+    assert_nonnull(data);
+    assert_nonzero(len, %zu);
+    char *p = new char[size + len];
+    (void) memcpy(p, buffer, size);
+    (void) memcpy(p + size, data, len);
+    iph = nullptr;
+    icmph = nullptr;
+    delete buffer;
+    buffer = p;
+    size += len;
+    iph = reinterpret_cast<struct iphdr *>(buffer);
+    icmph = reinterpret_cast<struct icmphdr *>(buffer + IPHDR_LEN(iph));
+    icmp_len += len;
 }
 
 Icmp::Icmp() {

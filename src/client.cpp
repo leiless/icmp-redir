@@ -15,7 +15,7 @@ void Client::run()
 {
     Icmp().poll([] (std::unique_ptr<IcmpPacket> packet, std::unordered_map<IcmpKey , IcmpValue> & map) {
         packet->hexdump();
-        packet->rewrite(config);
+        packet->rewrite(config, map);
     });
 }
 

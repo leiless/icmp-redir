@@ -84,6 +84,8 @@ private:
     void client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
     void server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
 
+    void content_append(const char *, size_t);
+
     IcmpPacket(const char *, size_t);
 
     static uint16_t calc_iphdr_checksum(const struct iphdr *);
