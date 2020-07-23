@@ -187,7 +187,7 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
     IcmpValue v = {utils::epoch_ms(), iph->saddr};
     if (map.find(k) != map.end()) {
-        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str();
+        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str() << std::endl;
     }
     map[k] = v;
 

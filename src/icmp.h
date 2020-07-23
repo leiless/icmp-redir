@@ -35,7 +35,7 @@ using IcmpKey = struct IcmpKey {
         oss << "IcmpKey {"
             << "daddr=" << net::ip_to_str(daddr) << " "
             << "id=" << ntohs(id) << " "
-            << "seq=" << ntohs(seq) << " "
+            << "seq=" << ntohs(seq)
             << "}";
         return oss.str();
     }
@@ -68,7 +68,7 @@ using IcmpValue = struct IcmpValue {
         std::ostringstream oss;
         oss << "IcmpValue {"
             << "ctime=" << ctime << " "
-            << "saddr=" << net::ip_to_str(saddr) << " "
+            << "saddr=" << net::ip_to_str(saddr)
             << "}";
         return oss.str();
     }
