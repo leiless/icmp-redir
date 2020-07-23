@@ -6,9 +6,9 @@
 #include "formatter.h"
 #include "net.h"
 #include "utils.h"
+#include "assertf.h"
 
 #include <stdexcept>
-#include <sstream>
 
 #include <cerrno>
 #include <cstring>
@@ -21,8 +21,7 @@
 /**
  * Initialize an ICMP packet(IP header included in buffer)
  */
-std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size)
-{
+std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size) {
     assert_nonnull(buffer);
     assert_nonzero(size, %zu);
 
@@ -63,8 +62,7 @@ std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size)
     return std::unique_ptr<IcmpPacket>(new IcmpPacket(buffer, size));
 }
 
-IcmpPacket::IcmpPacket(const char *buffer0, size_t size0)
-{
+IcmpPacket::IcmpPacket(const char *buffer0, size_t size0) {
     buffer = new char[size0];
     size = size0;
     (void) memcpy(buffer, buffer0, size);
@@ -76,8 +74,7 @@ IcmpPacket::IcmpPacket(const char *buffer0, size_t size0)
 
 #define IPHDR_CHECKSUM_OFFSET       offsetof(struct iphdr, check)
 
-uint16_t IcmpPacket::calc_iphdr_checksum(const struct iphdr *iph)
-{
+uint16_t IcmpPacket::calc_iphdr_checksum(const struct iphdr *iph) {
     static_assert(IPHDR_CHECKSUM_OFFSET % 2 == 0);
 
     auto iph_len = IPHDR_LEN(iph);
@@ -98,15 +95,13 @@ uint16_t IcmpPacket::calc_iphdr_checksum(const struct iphdr *iph)
     return ~cksum;
 }
 
-bool IcmpPacket::verify_iphdr_checksum(const struct iphdr *iph)
-{
+bool IcmpPacket::verify_iphdr_checksum(const struct iphdr *iph) {
     return iph->check == calc_iphdr_checksum(iph);
 }
 
 #define ICMPHDR_CHECKSUM_OFFSET     offsetof(struct icmphdr, checksum)
 
-uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t n)
-{
+uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t n) {
     static_assert(ICMPHDR_CHECKSUM_OFFSET % 2 == 0);
 
     uint32_t i;
@@ -125,8 +120,7 @@ uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t n
     return ~cksum;
 }
 
-bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n)
-{
+bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n) {
     return icmph->checksum == calc_icmphdr_checksum(icmph, n);
 }
 
@@ -235,7 +229,7 @@ void IcmpPacket::content_append(const char *data, size_t len) {
 }
 
 Icmp::Icmp() {
-    fd = socket(PF_INET, SOCK_RAW,  IPPROTO_ICMP);
+    fd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (fd < 0) {
         if (errno == EPERM) {
             throw std::runtime_error("raw socket requires root privilege");
@@ -247,7 +241,7 @@ Icmp::Icmp() {
     net::set_ip_hdr_inc(fd);
 }
 
-void Icmp::poll(void (*callback)(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &)) {
+void Icmp::poll(const std::function<Func> & callback) {
     assert_nonnull(callback);
 
     struct pollfd fds = {fd, POLLIN, 0};
@@ -274,7 +268,7 @@ out_read:
         // TODO: Schedule into thread pool
         auto packet = IcmpPacket::parse(buffer, (size_t) nread);
         if (packet) {
-            //packet->hexdump();
+            // TODO:
             // Append magic data
             // Rewrite src/dst addrs(bookkeeping original addrs in a hashmap)
             // Send out ICMP packet to dst addr

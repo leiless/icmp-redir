@@ -7,8 +7,7 @@
 #include "config.h"
 #include "client.h"
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     Config config = Config(argc, argv);
 
     std::cout << "Build timestamp: " << BUILD_TIMESTAMP << std::endl;

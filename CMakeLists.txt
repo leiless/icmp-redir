@@ -33,6 +33,7 @@ add_executable(
         src/assertf.h
         src/formatter.h
         src/net.h
+        src/net.cpp
         src/main.cpp
         src/config.cpp
         src/config.h
@@ -41,5 +42,6 @@ add_executable(
         src/icmp.cpp
         src/icmp.h
         src/utils.h
+        src/utils.cpp
 )
 

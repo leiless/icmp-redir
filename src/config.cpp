@@ -15,8 +15,7 @@
 
 #define DEFAULT_THREAD_POOL_SIZE    2
 
-Config::Config(int argc, char **argv)
-{
+Config::Config(int argc, char **argv) {
     this->argc = argc;
     this->argv = (const char **) argv;
 
@@ -87,8 +86,7 @@ Config::Config(int argc, char **argv)
     }
 }
 
-void Config::usage(int exit_status)
-{
+void Config::usage(int exit_status) {
     auto & os = exit_status ? std::cerr : std::cout;
 
     os << "Usage:\n"

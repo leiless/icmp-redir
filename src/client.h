@@ -6,9 +6,6 @@
 #define ICMP_REDIR_CLIENT_H
 
 #include "config.h"
-#include "icmp.h"
-
-#include <unordered_map>
 
 class Client {
 public:

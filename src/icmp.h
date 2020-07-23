@@ -15,6 +15,7 @@
 #include <sstream>
 #include <memory>
 #include <unordered_map>
+#include <functional>
 
 #include "config.h"
 #include "net.h"
@@ -107,7 +108,8 @@ public:
     Icmp();
     ~Icmp() { (void) close(fd); }
 
-    void poll(void (*)(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &));
+    using Func = void(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &);
+    void poll(const std::function<Func> &);
 private:
     static constexpr auto kMaxIcmpPacketSize = 65536u;
     int fd;
