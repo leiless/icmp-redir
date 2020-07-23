@@ -124,6 +124,11 @@ bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n) 
     return icmph->checksum == calc_icmphdr_checksum(icmph, n);
 }
 
+void IcmpPacket::calc_checksums() {
+    iph->check = calc_iphdr_checksum(iph);
+    icmph->checksum = calc_icmphdr_checksum(icmph, size);
+}
+
 void IcmpPacket::hexdump() const {
     std::ostringstream oss;
     auto iph_len = IPHDR_LEN(iph);
@@ -199,8 +204,7 @@ void IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     iph->saddr = 0;
     iph->daddr = server_addr;
 
-    calc_iphdr_checksum(iph);
-    calc_icmphdr_checksum(icmph, icmp_len);
+    calc_checksums();
 
     // TODO: send (buffer, size) to raw socket fd in Icmp class
 }

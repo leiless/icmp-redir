@@ -93,6 +93,7 @@ private:
     static bool verify_iphdr_checksum(const struct iphdr *);
     static uint16_t calc_icmphdr_checksum(const struct icmphdr *, size_t);
     static bool verify_icmphdr_checksum(const struct icmphdr *, size_t);
+    void calc_checksums();
 
     char *buffer;
     size_t size;
