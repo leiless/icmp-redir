@@ -2,14 +2,17 @@
  * Created Jul 18, 2020.
  */
 
+#include "compile.h"
 #include "config.h"
 #define ASSERTF_DEF_ONCE
 #include "assertf.h"
+#include "net.h"
 
 #include <iostream>
 #include <sstream>
 #include <getopt.h>
 #include <cstring>
+#include <optional>
 
 #define CSTR_EQ(s1, s2)             (!strcmp(s1, s2))
 
@@ -29,16 +32,21 @@ Config::Config(int argc, char **argv) {
             {nullptr, no_argument, nullptr, 0},
     };
 
-    std::string addr;
+    std::optional<uint32_t> addr;
     uint8_t thread = 0;
 
     int c;
     int opt_index = 0;
     while ((c = getopt_long(argc, argv, "a:t:vh", long_opts, &opt_index)) != -1) {
         switch (c) {
-        case 'a':
-            addr = optarg;
+        case 'a': {
+            auto [ip, ok] = net::str_to_ip(optarg);
+            if (!ok) {
+                panicf("invalid IPv4 address '%s'", optarg);
+            }
+            addr = ip;
             break;
+        }
         case 't': {
             unsigned long n = std::stoul(optarg);
             if (n == 0 || (n & ~0xffUL) != 0) {
@@ -68,10 +76,10 @@ Config::Config(int argc, char **argv) {
     assert_nonnull(mode);
     if (CSTR_EQ(mode, "client")) {
         run_type = CLIENT;
-        if (addr.empty()) {
+        if (!addr.has_value()) {
             throw std::runtime_error("missing address in client mode");
         }
-        client.addr = addr;
+        client.addr = addr.value();
     } else if (CSTR_EQ(mode, "server")) {
         run_type = SERVER;
     } else {

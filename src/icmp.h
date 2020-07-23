@@ -80,10 +80,10 @@ public:
     ~IcmpPacket() { delete buffer; }
 
     void hexdump() const;
-    void rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    bool rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
 private:
-    void client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
-    void server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    bool client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    bool server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
 
     void content_append(const char *, size_t);
 

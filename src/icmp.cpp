@@ -163,37 +163,33 @@ void IcmpPacket::hexdump() const {
     std::cout << oss.str();
 }
 
-void IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+bool IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     switch (config.run_type) {
     case Config::CLIENT:
-        client_rewrite(config, map);
-        break;
+        return client_rewrite(config, map);
     case Config::SERVER:
-        server_rewrite(config, map);
-        break;
+        return server_rewrite(config, map);
     default:
         panicf("unknown run type: %d", config.run_type);
     }
 }
 
-#define MAGIC_DATA          "opqrstuvwxyz{|}~"
+#define MAGIC_DATA          "[0123456789abcdef]"
 #define MAGIC_DATA_LEN      (sizeof(MAGIC_DATA) - 1)
 
-void IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::CLIENT, config.run_type, %d);
 
     // TODO: handle for ICMP_ECHOREPLY and send back to original sender
 
-    if (icmph->type != ICMP_ECHO || icmph->code != 0) return;
+    if (icmph->type != ICMP_ECHO || icmph->code != 0) return false;
 
     IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
     IcmpValue v = {utils::epoch_ms(), iph->saddr};
-    if (map.contains(k)) {
+    if (map.find(k) != map.end()) {
         std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str();
     }
     map[k] = v;
-
-    uint32_t server_addr = 0x01020304;
 
     char data[sizeof(uint32_t) + MAGIC_DATA_LEN];
     *((uint32_t *) data) = iph->daddr;
@@ -202,16 +198,18 @@ void IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     content_append(data, sizeof(data));
 
     iph->saddr = 0;
-    iph->daddr = server_addr;
+    iph->daddr = config.client.addr;
 
     calc_checksums();
 
     // TODO: send (buffer, size) to raw socket fd in Icmp class
+
+    return true;
 }
 
-void IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::SERVER, config.run_type, %d);
-
+    return false;
 }
 
 // Append data to ICMP content
@@ -228,6 +226,7 @@ void IcmpPacket::content_append(const char *data, size_t len) {
     buffer = p;
     size += len;
     iph = reinterpret_cast<struct iphdr *>(buffer);
+    iph->tot_len = htons(ntohs(iph->tot_len) + len);
     icmph = reinterpret_cast<struct icmphdr *>(buffer + IPHDR_LEN(iph));
     icmp_len += len;
 }

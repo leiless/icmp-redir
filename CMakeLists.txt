@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(icmp-redir)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 add_compile_options(-Wall -Wextra -g -DDEBUG -O0)
 #add_compile_options(-Wall -Wextra -O2 -DASSERTF_DISABLE)
@@ -30,6 +30,7 @@ add_compile_definitions(BUILD_USER="${BUILD_USER}")
 
 add_executable(
         ${PROJECT_NAME}
+        src/compile.h
         src/assertf.h
         src/formatter.h
         src/net.h

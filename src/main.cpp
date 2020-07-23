@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "compile.h"
 #include "config.h"
 #include "client.h"
 

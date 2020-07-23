@@ -39,3 +39,9 @@ std::string net::ip_to_str(uint32_t ip) {
     return output;
 }
 
+std::tuple<uint32_t, bool> net::str_to_ip(const std::string & s) {
+    struct in_addr in{};
+    int ret = inet_pton(AF_INET, s.c_str(), &in);
+    return std::make_tuple(in.s_addr, ret != 0);
+}
+

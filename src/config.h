@@ -16,7 +16,8 @@ public:
     uint8_t thread_pool_size;
     class ClientConfig {
     public:
-        std::string addr;
+        // TODO: support IPv6
+        uint32_t addr;
     } client;
     class ServerConfig {
     public:
