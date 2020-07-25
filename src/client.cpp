@@ -11,11 +11,13 @@ Client::Client(Config & config) : config(config) {
 }
 
 void Client::run() {
-    Icmp().poll([&] (std::unique_ptr<IcmpPacket> packet, std::unordered_map<IcmpKey , IcmpValue> & map) {
+    Icmp().read([&] (std::unique_ptr<IcmpPacket> packet, std::unordered_map<IcmpKey, IcmpValue> & map, int fd) {
         packet->hexdump();
         if (packet->rewrite(config, map)) {
             std::cout << "---- Rewrote ICMP packet ----" << std::endl;
             packet->hexdump();
+            // TODO: reply dest unreachable if failed to send?
+            (void) packet->send(fd);
         }
     });
 }

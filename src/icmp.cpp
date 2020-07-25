@@ -14,7 +14,6 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <poll.h>
 
 #define IPHDR_LEN(iph)          ((uint32_t) (iph)->ihl << 2u)
 
@@ -212,6 +211,28 @@ bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKe
     return false;
 }
 
+bool IcmpPacket::send(int fd) {
+    assert_ge(fd, 0, %d);
+    struct sockaddr_in sin{};
+    sin.sin_family = PF_INET;
+    sin.sin_addr.s_addr = iph->daddr;
+    ssize_t nwrite;
+    bool write_ok = false;
+out_send:
+    nwrite = ::sendto(fd, buffer, size, 0, (struct sockaddr *) &sin, sizeof(sin));
+    if (nwrite < 0) {
+        if (errno == EINTR) goto out_send;
+        std::cerr << "send(2) fail  errno: " << errno << " " << strerror(errno) << std::endl;
+    } else if (static_cast<size_t>(nwrite) != size) {
+        // Should never happen
+        std::cerr << "send(2) incomplete write: " << nwrite << " vs " << size << std::endl;
+    } else {
+        write_ok = true;
+        std::cout << nwrite << " bytes sent out to raw socket" << std::endl;
+    }
+    return write_ok;
+}
+
 // Append data to ICMP content
 // XXX: ICMP checksum will be invalid
 void IcmpPacket::content_append(const char *data, size_t len) {
@@ -244,24 +265,15 @@ Icmp::Icmp() {
     net::set_ip_hdr_inc(fd);
 }
 
-void Icmp::poll(const std::function<Func> & callback) {
+void Icmp::read(const std::function<Func> & callback) {
     assert_nonnull(callback);
 
-    struct pollfd fds = {fd, POLLIN, 0};
-    int e;
     char buffer[kMaxIcmpPacketSize];
     ssize_t nread;
     while (true) {
-        e = ::poll(&fds, 1, -1);
-        if (e < 0) {
-            if (errno == EINTR) continue;
-            panicf("poll(2) fail: %s", strerror(errno));
-        }
-        assert_eq(e, 1, %d);
-        assert_eq(fds.revents, POLLIN, %#x);
-
+        std::cout << "Waiting for ICMP packet..." << std::endl;
 out_read:
-        nread = read(fd, buffer, sizeof(buffer));
+        nread = ::read(fd, buffer, sizeof(buffer));
         if (nread < 0) {
             if (errno == EINTR) goto out_read;
             panicf("read(2) fail: %s", strerror(errno));
@@ -275,7 +287,7 @@ out_read:
             // Append magic data
             // Rewrite src/dst addrs(bookkeeping original addrs in a hashmap)
             // Send out ICMP packet to dst addr
-            callback(std::move(packet), map);
+            callback(std::move(packet), map, fd);
         } else {
             std::ostringstream oss;
             oss << "hexdump of unrecognizable ICMP packet(" << nread <<  " bytes):" << std::endl;

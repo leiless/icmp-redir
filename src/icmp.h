@@ -81,6 +81,8 @@ public:
 
     void hexdump() const;
     bool rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+
+    bool send(int);
 private:
     bool client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
     bool server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
@@ -109,8 +111,8 @@ public:
     Icmp();
     ~Icmp() { (void) close(fd); }
 
-    using Func = void(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey , IcmpValue> &);
-    void poll(const std::function<Func> &);
+    using Func = void(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey, IcmpValue> &, int);
+    void read(const std::function<Func> &);
 private:
     static constexpr auto kMaxIcmpPacketSize = 65536u;
     int fd;
