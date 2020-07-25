@@ -100,18 +100,18 @@ bool IcmpPacket::verify_iphdr_checksum(const struct iphdr *iph) {
 
 #define ICMPHDR_CHECKSUM_OFFSET     offsetof(struct icmphdr, checksum)
 
-uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t n) {
+uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t icmp_len) {
     static_assert(ICMPHDR_CHECKSUM_OFFSET % 2 == 0);
 
     uint32_t i;
     uint32_t cksum = 0;
     const uint16_t *p;
-    for (i = 0, p = (uint16_t *) icmph; i < n; i += 2, p++) {
+    for (i = 0, p = (uint16_t *) icmph; i < icmp_len; i += 2, p++) {
         if (i != ICMPHDR_CHECKSUM_OFFSET) {
             cksum += *p;
         }
     }
-    if (n & 1u) {
+    if (icmp_len & 1u) {
         cksum += *((uint8_t *) p);
     }
     cksum = (cksum & 0xffffu) + (cksum >> 16u);
@@ -119,13 +119,13 @@ uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t n
     return ~cksum;
 }
 
-bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t n) {
-    return icmph->checksum == calc_icmphdr_checksum(icmph, n);
+bool IcmpPacket::verify_icmphdr_checksum(const struct icmphdr *icmph, size_t icmp_len) {
+    return icmph->checksum == calc_icmphdr_checksum(icmph, icmp_len);
 }
 
 void IcmpPacket::calc_checksums() {
     iph->check = calc_iphdr_checksum(iph);
-    icmph->checksum = calc_icmphdr_checksum(icmph, size);
+    icmph->checksum = calc_icmphdr_checksum(icmph, icmp_len);
 }
 
 void IcmpPacket::hexdump() const {
@@ -196,7 +196,7 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
 
     content_append(data, sizeof(data));
 
-    iph->saddr = 0;
+    iph->saddr = INADDR_ANY;
     iph->daddr = config.client.addr;
 
     calc_checksums();
