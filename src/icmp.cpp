@@ -174,12 +174,52 @@ bool IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, Icmp
 }
 
 #define MAGIC_DATA          "[0123456789abcdef]"
-#define MAGIC_DATA_LEN      (sizeof(MAGIC_DATA) - 1)
+#define MAGIC_LEN           (sizeof(MAGIC_DATA) - 1)
+
+/**
+ * Check if the ICMP packet content ends with specific data
+ */
+bool IcmpPacket::data_ends_with(const char *data, size_t len) {
+    assert_nonnull(data);
+    if (icmp_len >= len) {
+        auto p = reinterpret_cast<const char *>(icmph) + icmp_len - len;
+        return !memcmp(p, data, len);
+    }
+    return false;
+}
+
+bool IcmpPacket::rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &map) {
+    if (!data_ends_with(MAGIC_DATA, MAGIC_LEN)) return false;
+    if (icmp_len < sizeof(*icmph) + sizeof(uint32_t) + MAGIC_LEN) return false;
+    auto daddr = *reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(icmph) + icmp_len - (sizeof(uint32_t) + MAGIC_LEN));
+
+    IcmpKey k = {daddr, icmph->un.echo.id, icmph->un.echo.sequence};
+    auto it = map.find(k);
+    if (it == map.end()) return false;
+
+    std::size_t nerased = map.erase(k);
+    assert_eq(nerased, 1, %zu);
+
+    iph->saddr = daddr;
+    iph->daddr = it->second.saddr;
+
+    // Reduce the bookkeeping ICMP data previously wrote by client
+    constexpr auto reduce_size = sizeof(uint32_t) + MAGIC_LEN;
+    iph->tot_len = htons(ntohs(iph->tot_len) - reduce_size);
+    size -= reduce_size;
+    icmp_len -= reduce_size;
+
+    calc_checksums();
+
+    return true;
+}
 
 bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::CLIENT, config.run_type, %d);
 
-    // TODO: handle for ICMP_ECHOREPLY and send back to original sender
+    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
+        return rewrite_echo_reply(map);
+    }
 
     if (icmph->type != ICMP_ECHO || icmph->code != 0) return false;
 
@@ -190,9 +230,9 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     }
     map[k] = v;
 
-    char data[sizeof(uint32_t) + MAGIC_DATA_LEN];
+    char data[sizeof(uint32_t) + MAGIC_LEN];
     *((uint32_t *) data) = iph->daddr;
-    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_DATA_LEN);
+    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_LEN);
 
     content_append(data, sizeof(data));
 
@@ -201,13 +241,13 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
 
     calc_checksums();
 
-    // TODO: send (buffer, size) to raw socket fd in Icmp class
-
     return true;
 }
 
 bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::SERVER, config.run_type, %d);
+    // TODO: server rewrite
+    (void) map;
     return false;
 }
 

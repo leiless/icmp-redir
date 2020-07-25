@@ -84,10 +84,12 @@ public:
 
     bool send(int);
 private:
+    void content_append(const char *, size_t);
+    bool data_ends_with(const char *, size_t);
+
+    bool rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &);
     bool client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
     bool server_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
-
-    void content_append(const char *, size_t);
 
     IcmpPacket(const char *, size_t);
 
