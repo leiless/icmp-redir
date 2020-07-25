@@ -28,7 +28,7 @@ std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size) {
         return nullptr;
     }
 
-    auto iph = (struct iphdr *) buffer;
+    auto iph = reinterpret_cast<const struct iphdr *>(buffer);
     auto iph_len = IPHDR_LEN(iph);
     if (iph_len < sizeof(struct iphdr)) {
         return nullptr;
@@ -52,7 +52,7 @@ std::unique_ptr<IcmpPacket> IcmpPacket::parse(const char *buffer, size_t size) {
         return nullptr;
     }
 
-    auto icmph = (struct icmphdr *) (buffer + iph_len);
+    auto icmph = reinterpret_cast<const struct icmphdr *>(buffer + iph_len);
     auto icmp_len = size - iph_len;
     if (!verify_icmphdr_checksum(icmph, icmp_len)) {
         return nullptr;
@@ -81,8 +81,8 @@ uint16_t IcmpPacket::calc_iphdr_checksum(const struct iphdr *iph) {
 
     uint32_t i;
     uint32_t cksum = 0;
-    const uint16_t *p;
-    for (i = 0, p = (uint16_t *) iph; i < iph_len; i += 2, p++) {
+    auto p = reinterpret_cast<const uint16_t *>(iph);
+    for (i = 0; i < iph_len; i += 2, p++) {
         /* Skip header checksum itself */
         if (i != IPHDR_CHECKSUM_OFFSET) {
             // TODO: ntohs(*p)
@@ -105,8 +105,8 @@ uint16_t IcmpPacket::calc_icmphdr_checksum(const struct icmphdr *icmph, size_t i
 
     uint32_t i;
     uint32_t cksum = 0;
-    const uint16_t *p;
-    for (i = 0, p = (uint16_t *) icmph; i < icmp_len; i += 2, p++) {
+    auto p = reinterpret_cast<const uint16_t *>(icmph);
+    for (i = 0; i < icmp_len; i += 2, p++) {
         if (i != ICMPHDR_CHECKSUM_OFFSET) {
             cksum += *p;
         }
@@ -271,7 +271,6 @@ void Icmp::read(const std::function<Func> & callback) {
     char buffer[kMaxIcmpPacketSize];
     ssize_t nread;
     while (true) {
-        std::cout << "Waiting for ICMP packet..." << std::endl;
 out_read:
         nread = ::read(fd, buffer, sizeof(buffer));
         if (nread < 0) {
