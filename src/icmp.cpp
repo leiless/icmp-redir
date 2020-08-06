@@ -174,7 +174,7 @@ bool IcmpPacket::rewrite(const Config & config, std::unordered_map<IcmpKey, Icmp
 }
 
 #define MAGIC_DATA          "[0123456789abcdef]"
-#define MAGIC_LEN           (sizeof(MAGIC_DATA) - 1)
+#define MAGIC_LEN           (sizeof(MAGIC_DATA) - 1)    /* EOS not included */
 
 /**
  * Check if the ICMP packet content ends with specific data
@@ -214,15 +214,7 @@ bool IcmpPacket::rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &map)
     return true;
 }
 
-bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
-    assert_eq(Config::CLIENT, config.run_type, %d);
-
-    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
-        return rewrite_echo_reply(map);
-    }
-
-    if (icmph->type != ICMP_ECHO || icmph->code != 0) return false;
-
+bool IcmpPacket::rewrite_echo_request(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
     IcmpValue v = {utils::epoch_ms(), iph->saddr};
     if (map.find(k) != map.end()) {
@@ -242,6 +234,23 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     calc_checksums();
 
     return true;
+}
+
+/**
+ * @return      true if packet data rewritten.
+ */
+bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+    assert_eq(Config::CLIENT, config.run_type, %d);
+
+    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
+        return rewrite_echo_reply(map);
+    }
+
+    if (icmph->type == ICMP_ECHO && icmph->code == 0) {
+        return rewrite_echo_request(config, map);
+    }
+
+    return false;
 }
 
 bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
@@ -265,7 +274,7 @@ out_send:
         std::cerr << "send(2) fail  errno: " << errno << " " << strerror(errno) << std::endl;
     } else if (static_cast<size_t>(nwrite) != size) {
         // Should never happen
-        std::cerr << "send(2) incomplete write: " << nwrite << " vs " << size << std::endl;
+        panicf("send(2) incomplete write: %zd vs %zu", nwrite, size);
     } else {
         write_ok = true;
         std::cout << nwrite << " bytes sent out to raw socket" << std::endl;
