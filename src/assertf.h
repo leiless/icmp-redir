@@ -183,7 +183,7 @@ int __vunused(void *arg, ...)
 #ifdef __cplusplus
 #define __type0                     decltype
 #else
-#define __type0                     __type0
+#define __type0                     typeof
 #endif
 
 #ifdef _WIN32
