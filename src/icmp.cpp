@@ -239,7 +239,7 @@ bool IcmpPacket::client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
  * @return      true if packet data rewritten.
  */
 bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
-    assert_eq(Config::CLIENT, config.run_type, %d);
+    assert_eq(config.run_type, Config::CLIENT, %d);
 
     if (icmph->type == ICMP_ECHO && icmph->code == 0) {
         return client_rewrite_echo_request(config, map);
@@ -300,7 +300,7 @@ bool IcmpPacket::server_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
 }
 
 bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
-    assert_eq(Config::SERVER, config.run_type, %d);
+    assert_eq(config.run_type, Config::SERVER, %d);
 
     if (icmph->type == ICMP_ECHO && icmph->code == 0) {
         return server_rewrite_echo_request(map);
