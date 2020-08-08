@@ -219,9 +219,6 @@ bool IcmpPacket::client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
     auto it = map.find(k);
     if (it == map.end()) return false;
 
-    std::size_t nerased = map.erase(k);
-    assert_eq(nerased, 1, %zu);
-
     iph->saddr = daddr;
     iph->daddr = it->second.saddr;
 
@@ -232,6 +229,8 @@ bool IcmpPacket::client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
     icmp_len -= reduce_size;
 
     calc_checksums();
+
+    (void) map.erase(it);
 
     return true;
 }
@@ -285,9 +284,6 @@ bool IcmpPacket::server_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
     auto it = map.find(k);
     if (it == map.end()) return false;
 
-    std::size_t n_erased = map.erase(k);
-    assert_eq(n_erased, 1, %zu);
-
     iph->saddr = INADDR_ANY;
     iph->daddr = it->second.saddr;
 
@@ -297,6 +293,8 @@ bool IcmpPacket::server_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
     content_append(data, sizeof(data));
 
     calc_checksums();
+
+    (void) map.erase(it);
 
     return true;
 }
