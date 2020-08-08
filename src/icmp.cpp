@@ -253,10 +253,65 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     return false;
 }
 
+bool IcmpPacket::server_rewrite_echo_request(std::unordered_map<IcmpKey, IcmpValue> & map) {
+    if (!data_ends_with(MAGIC_DATA, MAGIC_LEN)) return false;
+    if (icmp_len < sizeof(*icmph) + sizeof(uint32_t) + MAGIC_LEN) return false;
+    auto daddr = *reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(icmph) + icmp_len - (sizeof(uint32_t) + MAGIC_LEN));
+
+    IcmpKey k = {daddr, icmph->un.echo.id, icmph->un.echo.sequence};
+    // iph->saddr is the IP address of previous hop
+    IcmpValue v = {utils::epoch_ms(), iph->saddr};
+    if (map.find(k) != map.end()) {
+        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str() << std::endl;
+    }
+    map[k] = v;
+
+    iph->saddr = INADDR_ANY;
+    iph->daddr = daddr;
+
+    // Reduce the bookkeeping ICMP data previously wrote by client
+    constexpr auto reduce_size = sizeof(uint32_t) + MAGIC_LEN;
+    iph->tot_len = htons(ntohs(iph->tot_len) - reduce_size);
+    size -= reduce_size;
+    icmp_len -= reduce_size;
+
+    calc_checksums();
+
+    return true;
+}
+
+bool IcmpPacket::server_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> & map) {
+    IcmpKey k = {iph->saddr, icmph->un.echo.id, icmph->un.echo.sequence};
+    auto it = map.find(k);
+    if (it == map.end()) return false;
+
+    std::size_t n_erased = map.erase(k);
+    assert_eq(n_erased, 1, %zu);
+
+    iph->saddr = INADDR_ANY;
+    iph->daddr = it->second.saddr;
+
+    char data[sizeof(uint32_t) + MAGIC_LEN];
+    *((uint32_t *) data) = it->first.daddr;
+    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_LEN);
+    content_append(data, sizeof(data));
+
+    calc_checksums();
+
+    return true;
+}
+
 bool IcmpPacket::server_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::SERVER, config.run_type, %d);
-    // TODO: server rewrite
-    (void) map;
+
+    if (icmph->type == ICMP_ECHO && icmph->code == 0) {
+        return server_rewrite_echo_request(map);
+    }
+
+    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
+        return server_rewrite_echo_reply(map);
+    }
+
     return false;
 }
 
@@ -331,10 +386,6 @@ out_read:
         // TODO: Schedule into thread pool
         auto packet = IcmpPacket::parse(buffer, (size_t) nread);
         if (packet) {
-            // TODO:
-            // Append magic data
-            // Rewrite src/dst addrs(bookkeeping original addrs in a hashmap)
-            // Send out ICMP packet to dst addr
             callback(std::move(packet), map, fd);
         } else {
             std::ostringstream oss;
