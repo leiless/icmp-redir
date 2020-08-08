@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall -Wextra -g -DDEBUG -O0)
 #add_compile_options(-Wall -Wextra -O2 -DASSERTF_DISABLE)
 
-# TODO: Add branch name, build date, cxx flags
+# TODO: Stringify CMAKE_CXX_FLAGS
+
 execute_process(
         COMMAND git describe --dirty --always
         OUTPUT_VARIABLE BUILD_HEAD_COMMIT

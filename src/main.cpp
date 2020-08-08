@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
             if (packet->rewrite(config, map)) {
                 std::cout << "---- Rewrote ICMP packet ----" << std::endl;
                 packet->hexdump();
-                // TODO: reply dest unreachable if failed to send?
                 (void) packet->send(fd);
             }
         });

@@ -85,7 +85,6 @@ uint16_t IcmpPacket::calc_iphdr_checksum(const struct iphdr *iph) {
     for (i = 0; i < iph_len; i += 2, p++) {
         /* Skip header checksum itself */
         if (i != IPHDR_CHECKSUM_OFFSET) {
-            // TODO: ntohs(*p)
             cksum += *p;
         }
     }
