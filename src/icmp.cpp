@@ -242,12 +242,12 @@ bool IcmpPacket::client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue
 bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
     assert_eq(Config::CLIENT, config.run_type, %d);
 
-    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
-        return client_rewrite_echo_reply(map);
-    }
-
     if (icmph->type == ICMP_ECHO && icmph->code == 0) {
         return client_rewrite_echo_request(config, map);
+    }
+
+    if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
+        return client_rewrite_echo_reply(map);
     }
 
     return false;
