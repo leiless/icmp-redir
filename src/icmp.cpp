@@ -188,7 +188,29 @@ bool IcmpPacket::data_ends_with(const char *data, size_t len) {
     return false;
 }
 
-bool IcmpPacket::rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &map) {
+bool IcmpPacket::client_rewrite_echo_request(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
+    IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
+    IcmpValue v = {utils::epoch_ms(), iph->saddr};
+    if (map.find(k) != map.end()) {
+        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str() << std::endl;
+    }
+    map[k] = v;
+
+    char data[sizeof(uint32_t) + MAGIC_LEN];
+    *((uint32_t *) data) = iph->daddr;
+    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_LEN);
+
+    content_append(data, sizeof(data));
+
+    iph->saddr = INADDR_ANY;
+    iph->daddr = config.client.addr;
+
+    calc_checksums();
+
+    return true;
+}
+
+bool IcmpPacket::client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> & map) {
     if (!data_ends_with(MAGIC_DATA, MAGIC_LEN)) return false;
     if (icmp_len < sizeof(*icmph) + sizeof(uint32_t) + MAGIC_LEN) return false;
     auto daddr = *reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(icmph) + icmp_len - (sizeof(uint32_t) + MAGIC_LEN));
@@ -214,28 +236,6 @@ bool IcmpPacket::rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &map)
     return true;
 }
 
-bool IcmpPacket::rewrite_echo_request(const Config & config, std::unordered_map<IcmpKey, IcmpValue> & map) {
-    IcmpKey k = {iph->daddr, icmph->un.echo.id, icmph->un.echo.sequence};
-    IcmpValue v = {utils::epoch_ms(), iph->saddr};
-    if (map.find(k) != map.end()) {
-        std::cout << k.str() << ": " << map[k].str() << " will be overwritten by " << v.str() << std::endl;
-    }
-    map[k] = v;
-
-    char data[sizeof(uint32_t) + MAGIC_LEN];
-    *((uint32_t *) data) = iph->daddr;
-    (void) memcpy(data + sizeof(uint32_t), MAGIC_DATA, MAGIC_LEN);
-
-    content_append(data, sizeof(data));
-
-    iph->saddr = INADDR_ANY;
-    iph->daddr = config.client.addr;
-
-    calc_checksums();
-
-    return true;
-}
-
 /**
  * @return      true if packet data rewritten.
  */
@@ -243,11 +243,11 @@ bool IcmpPacket::client_rewrite(const Config & config, std::unordered_map<IcmpKe
     assert_eq(Config::CLIENT, config.run_type, %d);
 
     if (icmph->type == ICMP_ECHOREPLY && icmph->code == 0) {
-        return rewrite_echo_reply(map);
+        return client_rewrite_echo_reply(map);
     }
 
     if (icmph->type == ICMP_ECHO && icmph->code == 0) {
-        return rewrite_echo_request(config, map);
+        return client_rewrite_echo_request(config, map);
     }
 
     return false;

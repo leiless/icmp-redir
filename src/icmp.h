@@ -87,8 +87,8 @@ private:
     void content_append(const char *, size_t);
     bool data_ends_with(const char *, size_t);
 
-    bool rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &);
-    bool rewrite_echo_request(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    bool client_rewrite_echo_request(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
+    bool client_rewrite_echo_reply(std::unordered_map<IcmpKey, IcmpValue> &);
     bool client_rewrite(const Config &, std::unordered_map<IcmpKey, IcmpValue> &);
 
     bool server_rewrite_echo_request(std::unordered_map<IcmpKey, IcmpValue> &);
