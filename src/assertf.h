@@ -178,7 +178,7 @@ int __vunused(void *arg, ...)
 #define __xstr(x)                   __xstr0(x)
 
 /*
- * see: https://stackoverflow.com/questions/14130774/difference-between-decltype-and-__type0
+ * see: https://stackoverflow.com/questions/14130774/difference-between-decltype-and-typeof
  */
 #ifdef __cplusplus
 #define __type0                     decltype
