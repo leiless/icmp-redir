@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     case Config::SERVER:
         /* Fallthrough */
     case Config::CLIENT:
-        Icmp().read([&] (std::unique_ptr<IcmpPacket> packet, std::unordered_map<IcmpKey, IcmpValue> & map, int fd) {
+        Icmp(config).read([&] (std::unique_ptr<IcmpPacket> packet, std::unordered_map<IcmpKey, IcmpValue> & map, int fd) {
             packet->hexdump();
             if (packet->rewrite(config, map)) {
                 std::cout << "---- Rewrote ICMP packet ----" << std::endl;

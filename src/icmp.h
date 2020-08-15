@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "net.h"
+#include "threadpool.hpp"
 
 using IcmpKey = struct IcmpKey {
     // Destination IPv4 address
@@ -114,7 +115,7 @@ private:
 
 class Icmp {
 public:
-    Icmp();
+    explicit Icmp(const Config &);
     ~Icmp() { (void) close(fd); }
 
     using Func = void(std::unique_ptr<IcmpPacket>, std::unordered_map<IcmpKey, IcmpValue> &, int);
@@ -123,6 +124,7 @@ private:
     static constexpr auto kMaxIcmpPacketSize = 65536u;
     int fd;
     std::unordered_map<IcmpKey , IcmpValue> map;
+    concurrent::threadpool pool;
 };
 
 #endif

@@ -31,6 +31,7 @@ add_compile_definitions(BUILD_USER="${BUILD_USER}")
 
 add_executable(
         ${PROJECT_NAME}
+        src/threadpool.hpp
         src/compile.h
         src/assertf.h
         src/formatter.h
@@ -44,4 +45,13 @@ add_executable(
         src/utils.h
         src/utils.cpp
 )
+
+# see: https://stackoverflow.com/questions/1620918/cmake-and-libpthread
+find_package(Threads REQUIRED)
+if (THREADS_HAVE_PTHREAD_ARG)
+    target_compile_options(${PROJECT_NAME} PUBLIC "-pthread")
+endif()
+if (CMAKE_THREAD_LIBS_INIT)
+    target_link_libraries(${PROJECT_NAME} "${CMAKE_THREAD_LIBS_INIT}")
+endif()
 

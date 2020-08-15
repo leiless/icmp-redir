@@ -18,7 +18,7 @@
 
 #define DEFAULT_THREAD_POOL_SIZE    2
 
-Config::Config(int argc, char **argv) {
+Config::Config(int argc, char **argv) : client{}, server{} {
     this->argc = argc;
     this->argv = (const char **) argv;
 

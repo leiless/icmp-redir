@@ -353,7 +353,7 @@ void IcmpPacket::content_append(const char *data, size_t len) {
     icmp_len += len;
 }
 
-Icmp::Icmp() {
+Icmp::Icmp(const Config & config) : pool(config.thread_pool_size) {
     fd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (fd < 0) {
         if (errno == EPERM) {
@@ -369,27 +369,29 @@ Icmp::Icmp() {
 void Icmp::read(const std::function<Func> & callback) {
     assert_nonnull(callback);
 
-    char buffer[kMaxIcmpPacketSize];
+    char static_buf[kMaxIcmpPacketSize];
     ssize_t nread;
     while (true) {
 out_read:
-        nread = ::read(fd, buffer, sizeof(buffer));
+        nread = ::read(fd, static_buf, sizeof(static_buf));
         if (nread < 0) {
             if (errno == EINTR) goto out_read;
             panicf("read(2) fail: %s", strerror(errno));
         }
         assert_nonzero(nread, %zd);
 
-        // TODO: Schedule into thread pool
-        auto packet = IcmpPacket::parse(buffer, (size_t) nread);
-        if (packet) {
-            callback(std::move(packet), map, fd);
-        } else {
-            std::ostringstream oss;
-            oss << "hexdump of unrecognizable ICMP packet(" << nread <<  " bytes):" << std::endl;
-            utils::hexdump(buffer, nread, oss);
-            std::cout << oss.str();
-        }
+        char *buf = new char[nread];
+        (void) pool.enqueue([=, &callback](){
+            auto packet = IcmpPacket::parse(buf, (size_t) nread);
+            if (packet) {
+                callback(std::move(packet), map, fd);
+            } else {
+                std::ostringstream oss;
+                oss << "hexdump of unrecognizable ICMP packet(" << nread <<  " bytes):" << std::endl;
+                utils::hexdump(buf, nread, oss);
+                std::cout << oss.str();
+            }
+        });
     }
 }
 
