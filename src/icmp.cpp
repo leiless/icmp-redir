@@ -381,6 +381,7 @@ out_read:
         assert_nonzero(nread, %zd);
 
         char *buf = new char[nread];
+        (void) memcpy(buf, static_buf, nread);
         (void) pool.enqueue([=, &callback](){
             auto packet = IcmpPacket::parse(buf, (size_t) nread);
             if (packet) {
@@ -391,6 +392,7 @@ out_read:
                 utils::hexdump(buf, nread, oss);
                 std::cout << oss.str();
             }
+            delete[] buf;
         });
     }
 }
