@@ -26,7 +26,7 @@ public:
 
     Config(int, char **);
 private:
-    int argc;
+    int argc;   // Unused currently
     const char **argv;
 
     void usage(int) __attribute__ ((noreturn));

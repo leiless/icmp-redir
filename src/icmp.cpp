@@ -382,7 +382,7 @@ out_read:
 
         char *buf = new char[nread];
         (void) memcpy(buf, static_buf, nread);
-        (void) pool.enqueue([=, &callback](){
+        (void) pool.enqueue([=, &callback]() {
             auto packet = IcmpPacket::parse(buf, (size_t) nread);
             if (packet) {
                 callback(std::move(packet), map, fd);

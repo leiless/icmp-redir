@@ -12,8 +12,11 @@ public:
         stream << value;
         return *this;
     }
+
     // see: https://stackoverflow.com/questions/3044690/operator-stdstring-const
-    operator std::string() const { return stream.str(); }
+    operator std::string() const {
+        return stream.str();
+    }
 private:
     std::stringstream stream;
 };
